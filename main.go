@@ -50,7 +50,12 @@ func makeTransaction() {
 
 	c := proto.NewNodeClient(client)
 
-	_, err = c.HandleTransaction(context.TODO(), &proto.Transaction{})
+	version := &proto.Version{
+		Version: "0.1",
+		Height:  1,
+	}
+
+	_, err = c.Handshake(context.TODO(), version)
 	if err != nil {
 		log.Fatal(err)
 	}
