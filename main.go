@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"log"
-	"time"
 
 	"google.golang.org/grpc"
 
@@ -12,18 +11,24 @@ import (
 )
 
 func main() {
-	node := node.NewNode()
+	makeNode(":3000", []string{})
+	makeNode(":4000", []string{":3000"})
 
-	go func() {
-		for {
+	select {}
+}
 
-			time.Sleep(2 * time.Second)
-			makeTransaction()
+func makeNode(listenAddr string, bootstrapNodes []string) *node.Node {
+	n := node.NewNode()
 
+	go n.Serve(listenAddr)
+
+	if len(bootstrapNodes) > 0 {
+		if err := n.BootstrapNetwork(bootstrapNodes); err != nil {
+			log.Fatal(err)
 		}
-	}()
+	}
 
-	log.Fatal(node.Serve(":3000"))
+	return n
 }
 
 func makeTransaction() {
