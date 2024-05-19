@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"google.golang.org/grpc"
@@ -14,17 +12,7 @@ import (
 )
 
 func main() {
-
 	node := node.NewNode()
-
-	opts := []grpc.ServerOption{}
-	grpcServer := grpc.NewServer(opts...)
-
-	ln, err := net.Listen("tcp", ":3000")
-
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	go func() {
 		for {
@@ -35,15 +23,11 @@ func main() {
 		}
 	}()
 
-	proto.RegisterNodeServer(grpcServer, node)
-	fmt.Println("node running on port: ", ":3000")
-
-	grpcServer.Serve(ln)
+	log.Fatal(node.Serve(":3000"))
 }
 
 func makeTransaction() {
 	client, err := grpc.NewClient(":3000", grpc.WithInsecure())
-
 	if err != nil {
 		log.Fatal(err)
 	}
