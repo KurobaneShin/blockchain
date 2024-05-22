@@ -10,6 +10,12 @@ type HeaderList struct {
 	headers []*proto.Header
 }
 
+func NewHeaderList() *HeaderList {
+	return &HeaderList{
+		headers: []*proto.Header{},
+	}
+}
+
 func (list *HeaderList) Add(h *proto.Header) {
 	list.headers = append(list.headers, h)
 }
@@ -24,15 +30,19 @@ func (list *HeaderList) Len() int {
 
 type Chain struct {
 	blockStore BlockStorer
+	headers    *HeaderList
 }
 
 func NewChain(bs BlockStorer) *Chain {
 	return &Chain{
 		blockStore: bs,
+		headers:    NewHeaderList(),
 	}
 }
 
 func (c *Chain) AddBlock(b *proto.Block) error {
+	// add the header to the list of headers
+	c.headers.Add(b.Header)
 	// validatation
 	return c.blockStore.Put(b)
 }
