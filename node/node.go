@@ -2,7 +2,7 @@ package node
 
 import (
 	"context"
-	"fmt"
+	"encoding/hex"
 	"net"
 	"sync"
 
@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc/peer"
 
 	"github.com/KurobaneShin/blockchain/proto"
+	"github.com/KurobaneShin/blockchain/types"
 )
 
 type Node struct {
@@ -74,7 +75,9 @@ func (n *Node) Handshake(ctx context.Context, v *proto.Version) (*proto.Version,
 
 func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*proto.Ack, error) {
 	peer, _ := peer.FromContext(ctx)
-	fmt.Println("received tx from:", peer)
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+
+	n.logger.Debugw("rexeuved tx", "from", peer.Addr, "hash", hash)
 	return &proto.Ack{}, nil
 }
 
