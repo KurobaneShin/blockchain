@@ -78,7 +78,26 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 
 	n.logger.Debugw("rexeuved tx", "from", peer.Addr, "hash", hash)
+
+	go func() {
+		if err := n.broadcast(tx); err != nil {
+			n.logger.Errorw("broadcast error", "err", err)
+		}
+	}()
+
 	return &proto.Ack{}, nil
+}
+
+func (n *Node) broadcast(msg any) error {
+	for peer := range n.peers {
+		switch v := msg.(type) {
+		case *proto.Transaction:
+			if _, err := peer.HandleTransaction(context.Background(), v); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (n *Node) addPeer(c proto.NodeClient, v *proto.Version) {
