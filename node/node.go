@@ -15,6 +15,32 @@ import (
 	"github.com/KurobaneShin/blockchain/types"
 )
 
+type Mempool struct {
+	txx map[string]*proto.Transaction
+}
+
+func NewMempool() *Mempool {
+	return &Mempool{
+		txx: make(map[string]*proto.Transaction),
+	}
+}
+
+func (pool *Mempool) Has(tx *proto.Transaction) bool {
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+	_, ok := pool.txx[hash]
+	return ok
+}
+
+func (pool *Mempool) Add(tx *proto.Transaction) bool {
+	if pool.Has(tx) {
+		return false
+	}
+
+	hash := hex.EncodeToString(types.HashTransaction(tx))
+	pool.txx[hash] = tx
+	return true
+}
+
 type Node struct {
 	version    string
 	listenAddr string
@@ -22,6 +48,7 @@ type Node struct {
 
 	peerLock sync.RWMutex
 	peers    map[proto.NodeClient]*proto.Version
+	mempool  *Mempool
 
 	proto.UnimplementedNodeServer
 }
@@ -34,6 +61,7 @@ func NewNode() *Node {
 		peers:   make(map[proto.NodeClient]*proto.Version),
 		version: "0.1",
 		logger:  logger.Sugar(),
+		mempool: NewMempool(),
 	}
 }
 
@@ -77,14 +105,14 @@ func (n *Node) HandleTransaction(ctx context.Context, tx *proto.Transaction) (*p
 	peer, _ := peer.FromContext(ctx)
 	hash := hex.EncodeToString(types.HashTransaction(tx))
 
-	n.logger.Debugw("rexeuved tx", "from", peer.Addr, "hash", hash)
-
-	go func() {
-		if err := n.broadcast(tx); err != nil {
-			n.logger.Errorw("broadcast error", "err", err)
-		}
-	}()
-
+	if n.mempool.Add(tx) {
+		n.logger.Debugw("received tx", "from", peer.Addr, "hash", hash, "we", n.listenAddr)
+		go func() {
+			if err := n.broadcast(tx); err != nil {
+				n.logger.Errorw("broadcast error", "err", err)
+			}
+		}()
+	}
 	return &proto.Ack{}, nil
 }
 
