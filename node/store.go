@@ -9,6 +9,21 @@ import (
 	"github.com/KurobaneShin/blockchain/types"
 )
 
+type TXStorer interface {
+	Put(*proto.Transaction) error
+	Get(string) (*proto.Transaction, error)
+}
+
+type MemoryTXStore struct {
+	txx map[string]*proto.Transaction
+}
+
+func NewMemoryTxStore() *MemoryTXStore {
+	return &MemoryTXStore{
+		txx: make(map[string]*proto.Transaction),
+	}
+}
+
 type BlockStorer interface {
 	Put(*proto.Block) error
 	Get(string) (*proto.Block, error)
