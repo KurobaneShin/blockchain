@@ -42,9 +42,17 @@ func (list *HeaderList) Len() int {
 	return len(list.headers)
 }
 
+type UTXO struct {
+	Hash     string
+	OutIndex int
+	Amout    int64
+	Spent    bool
+}
+
 type Chain struct {
 	txStore    TXStorer
 	blockStore BlockStorer
+	utxoStore  UTXOStorer
 	headers    *HeaderList
 }
 
@@ -52,6 +60,7 @@ func NewChain(bs BlockStorer, txStore TXStorer) *Chain {
 	chain := &Chain{
 		blockStore: bs,
 		txStore:    txStore,
+		utxoStore:  NewMemoryUTXOStore(),
 		headers:    NewHeaderList(),
 	}
 	chain.addBlock(createGenesisBlock())
@@ -75,6 +84,21 @@ func (c *Chain) addBlock(b *proto.Block) error {
 	for _, tx := range b.Transactions {
 		if err := c.txStore.Put(tx); err != nil {
 			return err
+		}
+
+		hash := hex.EncodeToString(types.HashTransaction(tx))
+		for idx, output := range tx.Outputs {
+			utxo := &UTXO{
+				Hash:     hash,
+				Amout:    output.Amount,
+				OutIndex: idx,
+				Spent:    false,
+			}
+			address := crypto.AddressFromBytes(output.Address)
+			key := fmt.Sprintf("%s_%s", address, hash)
+			if err := c.utxoStore.Put(key, utxo); err != nil {
+				return err
+			}
 		}
 	}
 
