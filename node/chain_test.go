@@ -113,6 +113,5 @@ func TestAddBlockWithTx(t *testing.T) {
 	key := fmt.Sprintf("%s_%s", address, txHash)
 	utxo, err := chain.utxoStore.Get(key)
 	assert.Nil(t, err)
-	assert.Equal(t, 900, utxo.Amout)
-	// assert.Equal(t, amount)
+	assert.Equal(t, int64(900), utxo.Amout)
 }
