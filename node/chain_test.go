@@ -108,10 +108,16 @@ func TestAddBlockWithTx(t *testing.T) {
 	assert.Equal(t, tx, fetchedTx)
 
 	// check if their is an UTXO that is unspent
-
-	address := crypto.AddressFromBytes(tx.Outputs[1].Address)
-	key := fmt.Sprintf("%s_%s", address, txHash)
-	utxo, err := chain.utxoStore.Get(key)
+	queriedTx, err := chain.txStore.Get(txHash)
 	assert.Nil(t, err)
-	assert.Equal(t, int64(900), utxo.Amout)
+
+	nOutputs := len(queriedTx.Outputs)
+
+	for i := 0; i < nOutputs; i++ {
+
+		key := fmt.Sprintf("%s_%d", txHash, i)
+		utxo, err := chain.utxoStore.Get(key)
+		assert.Nil(t, err)
+		assert.False(t, utxo.Spent)
+	}
 }
