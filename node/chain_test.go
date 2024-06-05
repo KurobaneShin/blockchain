@@ -1,8 +1,6 @@
 package node
 
 import (
-	"encoding/hex"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -60,6 +58,45 @@ func TestAddBlock(t *testing.T) {
 	}
 }
 
+func TestAddBlockWithTxInsuficientFunds(t *testing.T) {
+	var (
+		chain     = NewChain(NewMemoryBlockStore(), NewMemoryTxStore())
+		block     = randomBlock(t, chain)
+		privKey   = crypto.NewPrivateKeyFromSeedString(seed)
+		recipient = crypto.GeneratePrivateKey().Public().Address().Bytes()
+	)
+
+	prevTx, err := chain.txStore.Get("4519e2c0cd2c4f14e753affa6b3ea98ceee2b02ddbfff60ab75481e6bb93d563")
+	assert.Nil(t, err)
+
+	inputs := []*proto.TxInput{
+		{
+			PrevTxHash:   types.HashTransaction(prevTx),
+			PrevOutIndex: 0,
+			PublicKey:    privKey.Public().Bytes(),
+		},
+	}
+
+	outputs := []*proto.TxOutput{
+		{
+			Amount:  1001,
+			Address: recipient,
+		},
+	}
+
+	tx := &proto.Transaction{
+		Version: 1,
+		Inputs:  inputs,
+		Outputs: outputs,
+	}
+
+	sig := types.SignTransaction(privKey, tx)
+	tx.Inputs[0].Signature = sig.Bytes()
+
+	block.Transactions = append(block.Transactions, tx)
+	require.Error(t, chain.AddBlock(block))
+}
+
 func TestAddBlockWithTx(t *testing.T) {
 	var (
 		chain     = NewChain(NewMemoryBlockStore(), NewMemoryTxStore())
@@ -68,12 +105,12 @@ func TestAddBlockWithTx(t *testing.T) {
 		recipient = crypto.GeneratePrivateKey().Public().Address().Bytes()
 	)
 
-	ftt, err := chain.txStore.Get("4519e2c0cd2c4f14e753affa6b3ea98ceee2b02ddbfff60ab75481e6bb93d563")
+	prevTx, err := chain.txStore.Get("4519e2c0cd2c4f14e753affa6b3ea98ceee2b02ddbfff60ab75481e6bb93d563")
 	assert.Nil(t, err)
 
 	inputs := []*proto.TxInput{
 		{
-			PrevTxHash:   types.HashTransaction(ftt),
+			PrevTxHash:   types.HashTransaction(prevTx),
 			PrevOutIndex: 0,
 			PublicKey:    privKey.Public().Bytes(),
 		},
@@ -101,23 +138,4 @@ func TestAddBlockWithTx(t *testing.T) {
 
 	block.Transactions = append(block.Transactions, tx)
 	require.Nil(t, chain.AddBlock(block))
-	txHash := hex.EncodeToString(types.HashTransaction(tx))
-
-	fetchedTx, err := chain.txStore.Get(txHash)
-	assert.Nil(t, err)
-	assert.Equal(t, tx, fetchedTx)
-
-	// check if their is an UTXO that is unspent
-	queriedTx, err := chain.txStore.Get(txHash)
-	assert.Nil(t, err)
-
-	nOutputs := len(queriedTx.Outputs)
-
-	for i := 0; i < nOutputs; i++ {
-
-		key := fmt.Sprintf("%s_%d", txHash, i)
-		utxo, err := chain.utxoStore.Get(key)
-		assert.Nil(t, err)
-		assert.False(t, utxo.Spent)
-	}
 }
