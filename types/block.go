@@ -1,13 +1,33 @@
 package types
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"fmt"
 
+	"github.com/cbergoon/merkletree"
 	pb "google.golang.org/protobuf/proto"
 
 	"github.com/KurobaneShin/blockchain/crypto"
 	"github.com/KurobaneShin/blockchain/proto"
 )
+
+type TxHash struct {
+	hash []byte
+}
+
+func NewTxHash(hash []byte) TxHash {
+	return TxHash{hash: hash}
+}
+
+func (h TxHash) CalculateHash() ([]byte, error) {
+	return h.hash, nil
+}
+
+func (h TxHash) Equals(other merkletree.Content) (bool, error) {
+	equals := bytes.Equal(h.hash, other.(TxHash).hash)
+	return equals, nil
+}
 
 func VerifyBlock(b *proto.Block) bool {
 	if len(b.PublicKey) != crypto.PubKeyLen {
@@ -26,6 +46,29 @@ func SignBlock(pk *crypto.PrivateKey, b *proto.Block) *crypto.Signature {
 	b.PublicKey = pk.Public().Bytes()
 	b.Signature = sig.Bytes()
 	return sig
+}
+
+func CalculateRootHash(b *proto.Block) error {
+	list := make([]merkletree.Content, len(b.Transactions))
+	for i := 0; i < len(b.Transactions); i++ {
+		list[i] = NewTxHash(HashTransaction(b.Transactions[i]))
+	}
+	t, err := merkletree.NewTree(list)
+	if err != nil {
+		return err
+	}
+
+	isTreeValid, err := t.VerifyTree()
+	if err != nil {
+		return err
+	}
+
+	if !isTreeValid {
+		return fmt.Errorf("invalid merkeltree")
+	}
+
+	b.Header.RootHash = t.MerkleRoot()
+	return nil
 }
 
 // HashBlock return a SHA256 of the header.

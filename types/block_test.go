@@ -6,8 +6,20 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/KurobaneShin/blockchain/crypto"
+	"github.com/KurobaneShin/blockchain/proto"
 	"github.com/KurobaneShin/blockchain/util"
 )
+
+func TestCalculateRootHash(t *testing.T) {
+	block := util.RandomBlock()
+	tx := &proto.Transaction{
+		Version: 1,
+	}
+	block.Transactions = append(block.Transactions, tx)
+
+	assert.Nil(t, CalculateRootHash(block))
+	assert.Equal(t, 32, len(block.Header.RootHash))
+}
 
 func TestSignVerifyBlock(t *testing.T) {
 	block := util.RandomBlock()
