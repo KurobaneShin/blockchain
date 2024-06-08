@@ -16,8 +16,10 @@ func TestCalculateRootHash(t *testing.T) {
 		Version: 1,
 	}
 	block.Transactions = append(block.Transactions, tx)
+	privKey := crypto.GeneratePrivateKey()
+	SignBlock(privKey, block)
 
-	assert.Nil(t, CalculateRootHash(block))
+	assert.True(t, VerifyRootHash(block))
 	assert.Equal(t, 32, len(block.Header.RootHash))
 }
 

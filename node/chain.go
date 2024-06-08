@@ -119,8 +119,10 @@ func (c *Chain) GetBlockByHeight(height int) (*proto.Block, error) {
 }
 
 func (c *Chain) ValidateBlock(b *proto.Block) error {
-	if !types.VerifyBlock(b) {
-		return fmt.Errorf("invalid block signature")
+	if len(b.Transactions) > 0 {
+		if !types.VerifyBlock(b) {
+			return fmt.Errorf("invalid block signature")
+		}
 	}
 	currentBlock, err := c.GetBlockByHeight(c.Height())
 	if err != nil {
